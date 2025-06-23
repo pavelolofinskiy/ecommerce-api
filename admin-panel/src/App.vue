@@ -1,30 +1,40 @@
-<script setup>
-import HelloWorld from './components/HelloWorld.vue'
-</script>
-
 <template>
-  <div>
-    <a href="https://vite.dev" target="_blank">
-      <img src="/vite.svg" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://vuejs.org/" target="_blank">
-      <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
-    </a>
+  <div class="min-h-screen bg-gray-50 text-gray-900">
+    <header class="bg-white shadow p-4 flex justify-between items-center">
+      <h1 class="text-xl font-semibold">Панель администратора</h1>
+      <div v-if="auth.token">
+        <span class="mr-4">👤 {{ auth.user?.email }}</span>
+        <button @click="logout" class="bg-red-600 text-white px-4 py-1 rounded">Выйти</button>
+      </div>
+    </header>
+
+    <nav v-if="auth.token" class="bg-gray-100 p-3 flex gap-4">
+      <RouterLink to="/orders" class="hover:underline">Заказы</RouterLink>
+      <RouterLink to="/products" class="hover:underline">Товары</RouterLink>
+    </nav>
+
+    <main class="p-4">
+      <RouterView />
+    </main>
   </div>
-  <HelloWorld msg="Vite + Vue" />
 </template>
 
-<style scoped>
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
+<script setup>
+import { useAuthStore } from './stores/auth'
+import { useRouter } from 'vue-router'
+import { onMounted } from 'vue'
+
+const auth = useAuthStore()
+const router = useRouter()
+
+onMounted(() => {
+  if (!auth.token && router.currentRoute.value.path !== '/login') {
+    router.push('/login')
+  }
+})
+
+const logout = () => {
+  auth.logout()
+  router.push('/login')
 }
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #42b883aa);
-}
-</style>
+</script>

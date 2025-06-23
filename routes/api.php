@@ -10,6 +10,8 @@ use App\Http\Controllers\Api\OrderController;
 
 use App\Http\Controllers\Api\AuthController;
 
+use App\Http\Controllers\Admin\AdminProductController;
+use App\Http\Controllers\Admin\AdminCategoryController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -53,9 +55,31 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('addresses', AddressController::class);
 });
 
-use App\Http\Controllers\Api\OrderController;
-
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders/{order}', [OrderController::class, 'show']);
 });
+
+use App\Http\Controllers\Admin\AdminOrderController;
+
+Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
+    Route::get('/orders', [AdminOrderController::class, 'index']);
+    Route::patch('/orders/{order}/status', [AdminOrderController::class, 'updateStatus']);
+});
+
+Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
+    // Товары
+    Route::get('/products', [AdminProductController::class, 'index']);
+    Route::post('/products', [AdminProductController::class, 'store']);
+    Route::put('/products/{product}', [AdminProductController::class, 'update']);
+    Route::delete('/products/{product}', [AdminProductController::class, 'destroy']);
+
+    // Категории
+    Route::get('/categories', [AdminCategoryController::class, 'index']);
+    // Если надо, позже можно добавить create/update/delete для категорий
+});
+
+Route::apiResource('/products', AdminProductController::class)->except(['show']);
+
+Route::apiResource('/categories', AdminCategoryController::class)->except(['show']);
+
