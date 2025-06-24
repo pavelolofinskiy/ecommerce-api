@@ -83,3 +83,6 @@ Route::apiResource('/products', AdminProductController::class)->except(['show'])
 
 Route::apiResource('/categories', AdminCategoryController::class)->except(['show']);
 
+Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
+    Route::apiResource('/categories', AdminCategoryController::class)->except(['show']);
+});

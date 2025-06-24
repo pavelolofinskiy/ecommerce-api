@@ -11,6 +11,7 @@
     <nav v-if="auth.token" class="bg-gray-100 p-3 flex gap-4">
       <RouterLink to="/orders" class="hover:underline">Заказы</RouterLink>
       <RouterLink to="/products" class="hover:underline">Товары</RouterLink>
+      <RouterLink to="/categories">Категории</RouterLink>
     </nav>
 
     <main class="p-4">
