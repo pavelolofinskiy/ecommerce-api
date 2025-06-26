@@ -10,6 +10,8 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
+
+
         $query = Product::with(['category', 'images', 'prices', 'attributes']);
 
         // 🔸 Фильтр по категории
@@ -30,13 +32,12 @@ class ProductController extends Controller
             });
         }
 
-        // 🔸 Фильтр по атрибутам (напр. attribute_color=Красный)
-        foreach ($request->all() as $key => $value) {
-            if (str_starts_with($key, 'attribute_')) {
-                $attrName = str_replace('attribute_', '', $key);
+        // 🔸 Фильтр по атрибутам через filter[Цвет]=Черный&filter[Вес]=5
+        if ($request->has('filter')) {
+            foreach ($request->get('filter') as $attrName => $value) {
                 $query->whereHas('attributes', function ($q) use ($attrName, $value) {
                     $q->where('attributes.name', $attrName)
-                    ->wherePivot('value', $value);
+                    ->where('attribute_product.value', $value);
                 });
             }
         }

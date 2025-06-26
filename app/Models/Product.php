@@ -7,7 +7,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class Product extends Model
 {
-    protected $fillable = ['name', 'description', 'category_id', 'price', 'image'];
+    protected $fillable = [
+        'external_id',
+        'name',
+        'description',
+        'price',
+        'category_id',
+        'image',
+    ];
 
     public function category()
     {
@@ -24,11 +31,12 @@ class Product extends Model
         return $this->hasMany(Price::class);
     }
 
+    
     public function attributes()
     {
-        return $this->belongsToMany(Attribute::class)
-                    ->withPivot('value') // значение атрибута (например, цвет = красный)
-                    ->withTimestamps();
+        return $this->belongsToMany(\App\Models\Attribute::class, 'attribute_product')
+            ->withPivot('value')
+            ->withTimestamps();
     }
 
     

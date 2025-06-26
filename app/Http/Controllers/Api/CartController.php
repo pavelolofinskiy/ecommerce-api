@@ -6,23 +6,37 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\Product;
 
 class CartController extends Controller
 {
-    // Получить текущую корзину пользователя с товарами
+    // Получить корзину
     public function getCart(Request $request)
     {
-        $user = $request->user();
-        $cart = Cart::with('items.product')->where('user_id', $user->id)->first();
+        if ($request->user()) {
+            $cart = Cart::with('items.product')->where('user_id', $request->user()->id)->first();
+            return response()->json($cart ?: ['items' => []]);
+        }
 
-        if (!$cart) {
+        // Гость
+        $sessionCart = session('cart', []);
+        if (empty($sessionCart)) {
             return response()->json(['items' => []]);
         }
 
-        return response()->json($cart);
+        $products = Product::whereIn('id', array_keys($sessionCart))->get();
+
+        $items = $products->map(function ($product) use ($sessionCart) {
+            return [
+                'product' => $product,
+                'quantity' => $sessionCart[$product->id]['quantity'],
+            ];
+        });
+
+        return response()->json(['items' => $items]);
     }
 
-    // Добавить товар в корзину (если есть — увеличить количество)
+    // Добавить товар
     public function addItem(Request $request)
     {
         $request->validate([
@@ -30,45 +44,78 @@ class CartController extends Controller
             'quantity' => 'required|integer|min:1',
         ]);
 
-        $user = $request->user();
+        $productId = $request->product_id;
+        $quantity = $request->quantity;
 
-        // Получаем или создаём корзину
-        $cart = Cart::firstOrCreate(['user_id' => $user->id]);
+        if ($request->user()) {
+            $user = $request->user();
+            $cart = Cart::firstOrCreate(['user_id' => $user->id]);
 
-        // Проверяем, есть ли уже товар в корзине
-        $item = $cart->items()->where('product_id', $request->product_id)->first();
+            $item = $cart->items()->where('product_id', $productId)->first();
 
-        if ($item) {
-            $item->quantity += $request->quantity;
-            $item->save();
-        } else {
-            $cart->items()->create([
-                'product_id' => $request->product_id,
-                'quantity' => $request->quantity,
+            if ($item) {
+                $item->quantity += $quantity;
+                $item->save();
+            } else {
+                $cart->items()->create([
+                    'product_id' => $productId,
+                    'quantity' => $quantity,
+                ]);
+            }
+
+            return response()->json([
+                'message' => 'Товар добавлен в корзину (авторизован)',
+                'items' => $cart->load('items.product')->items,
             ]);
         }
 
-        return response()->json(['message' => 'Товар добавлен в корзину']);
+        // Гость
+        $cart = session('cart', []);
+
+        if (isset($cart[$productId])) {
+            $cart[$productId]['quantity'] += $quantity;
+        } else {
+            $cart[$productId] = ['quantity' => $quantity];
+        }
+
+        session(['cart' => $cart]);
+
+        $products = Product::whereIn('id', array_keys($cart))->get();
+
+        $items = $products->map(function ($product) use ($cart) {
+            return [
+                'product' => $product,
+                'quantity' => $cart[$product->id]['quantity'],
+            ];
+        });
+
+        return response()->json([
+            'message' => 'Товар добавлен в корзину (гость)',
+            'items' => $items,
+        ]);
     }
 
-    // Удалить товар из корзины
-    public function removeItem(Request $request, $itemId)
+    // Удалить товар
+    public function removeItem(Request $request, $productId)
     {
-        $user = $request->user();
-        $cart = Cart::where('user_id', $user->id)->first();
+        if ($request->user()) {
+            $cart = Cart::where('user_id', $request->user()->id)->first();
+            if (!$cart) return response()->json(['message' => 'Корзина не найдена'], 404);
 
-        if (!$cart) {
-            return response()->json(['message' => 'Корзина не найдена'], 404);
+            $item = $cart->items()->where('product_id', $productId)->first();
+            if (!$item) return response()->json(['message' => 'Товар не найден'], 404);
+
+            $item->delete();
+            return response()->json(['message' => 'Товар удалён (авторизован)']);
         }
 
-        $item = $cart->items()->where('id', $itemId)->first();
-
-        if (!$item) {
-            return response()->json(['message' => 'Товар в корзине не найден'], 404);
+        // Гость
+        $cart = session('cart', []);
+        if (isset($cart[$productId])) {
+            unset($cart[$productId]);
+            session(['cart' => $cart]);
         }
 
-        $item->delete();
-
-        return response()->json(['message' => 'Товар удалён из корзины']);
+        return response()->json(['message' => 'Товар удалён (гость)']);
     }
 }

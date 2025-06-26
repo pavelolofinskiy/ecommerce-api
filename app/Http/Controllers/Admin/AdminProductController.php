@@ -9,7 +9,8 @@ use App\Models\Product;
 class AdminProductController extends Controller
 {
     public function store(Request $request)
-    {
+    {   
+        
         $validated = $request->validate([
             'name' => 'required|string',
             'description' => 'nullable|string',

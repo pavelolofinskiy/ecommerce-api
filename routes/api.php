@@ -32,13 +32,13 @@ Route::prefix('v1')->group(function () {
     Route::get('/products/{id}', [ProductController::class, 'show']);
 });
 
-Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/cart', [CartController::class, 'getCart']);
-    Route::post('/cart/add', [CartController::class, 'addItem']);
-    Route::delete('/cart/remove/{id}', [CartController::class, 'removeItem']);
 
-    Route::post('/checkout', [OrderController::class, 'checkout']);
-});
+Route::get('/cart', [CartController::class, 'getCart']);
+Route::post('/cart/add', [CartController::class, 'addItem']);
+Route::delete('/cart/remove/{id}', [CartController::class, 'removeItem']);
+
+Route::post('/checkout', [OrderController::class, 'checkout']);
+
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);

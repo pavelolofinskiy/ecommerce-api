@@ -80,7 +80,7 @@
           <tr v-for="product in products" :key="product.id">
             <td>{{ product.id }}</td>
             <td>{{ product.name }}</td>
-            <td>{{ product.price?.amount ?? '—' }}</td>
+            <td>{{ product.price ?? '—' }}</td>
             <td>{{ product.category?.name }}</td>
             <td>
               <button @click="editProduct(product)" class="btn-link edit">Редактировать</button>
@@ -89,7 +89,7 @@
             <td>
               <img
                 v-if="product.image"
-                :src="getImageUrl(product.image)"
+                :src="product.image"
                 class="product-image"
                 alt="Product image"
               />

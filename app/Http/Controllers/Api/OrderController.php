@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Cart;
 use App\Models\Order;
+use App\Models\Product;
 
 class OrderController extends Controller
 {
@@ -21,14 +22,46 @@ class OrderController extends Controller
         ]);
 
         $user = $request->user();
-        $cart = Cart::with('items.product.prices')->where('user_id', $user->id)->first();
 
-        if (!$cart || $cart->items->isEmpty()) {
-            return response()->json(['message' => 'Корзина пуста'], 400);
+        if ($user) {
+            // Корзина авторизованного пользователя
+            $cart = Cart::with('items.product.prices')->where('user_id', $user->id)->first();
+
+            if (!$cart || $cart->items->isEmpty()) {
+                return response()->json(['message' => 'Корзина пуста'], 400);
+            }
+
+            $items = $cart->items;
+        } else {
+            // Корзина гостя из сессии
+            $sessionCart = session('cart', []);
+
+            if (empty($sessionCart)) {
+                return response()->json(['message' => 'Корзина пуста'], 400);
+            }
+
+            $productIds = array_keys($sessionCart);
+            $products = Product::with('prices')->whereIn('id', $productIds)->get();
+
+            // Создаём коллекцию для удобства
+            $items = collect();
+            foreach ($products as $product) {
+                $quantity = $sessionCart[$product->id]['quantity'] ?? 0;
+                if ($quantity > 0) {
+                    $items->push((object)[
+                        'product' => $product,
+                        'quantity' => $quantity,
+                        'product_id' => $product->id,
+                    ]);
+                }
+            }
+            if ($items->isEmpty()) {
+                return response()->json(['message' => 'Корзина пуста'], 400);
+            }
         }
 
         $total = 0;
-        foreach ($cart->items as $item) {
+        foreach ($items as $item) {
             $price = $item->product->prices->where('type', 'default')->first();
             if (!$price) {
                 return response()->json(['message' => 'Цена для товара не найдена'], 400);
@@ -36,16 +69,16 @@ class OrderController extends Controller
             $total += $price->amount * $item->quantity;
         }
 
-        // Создаём заказ
+        // Создаем заказ (если гость — user_id будет null)
         $order = Order::create([
-            'user_id' => $user->id,
+            'user_id' => $user ? $user->id : null,
             'status' => 'new',
             'total' => $total,
             'shipping_address' => $request->shipping_address,
         ]);
 
         // Добавляем товары в заказ
-        foreach ($cart->items as $item) {
+        foreach ($items as $item) {
             $price = $item->product->prices->where('type', 'default')->first();
 
             $order->items()->create([
@@ -56,7 +89,11 @@ class OrderController extends Controller
         }
 
         // Очищаем корзину
-        $cart->items()->delete();
+        if ($user) {
+            $cart->items()->delete();
+        } else {
+            session(['cart' => []]);
+        }
 
         return response()->json(['message' => 'Заказ успешно создан', 'order_id' => $order->id]);
     }

@@ -9,10 +9,10 @@ class Attribute extends Model
 {
     protected $fillable = ['name', 'type'];
 
-    public function products()
+   public function products()
     {
-        return $this->belongsToMany(Product::class)
-                    ->withPivot('value')
-                    ->withTimestamps();
+        return $this->belongsToMany(\App\Models\Product::class, 'attribute_product')
+            ->withPivot('value')
+            ->withTimestamps();
     }
 }
