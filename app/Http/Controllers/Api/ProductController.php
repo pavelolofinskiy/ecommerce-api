@@ -10,16 +10,14 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-
-
         $query = Product::with(['category', 'images', 'prices', 'attributes']);
 
-        // 🔸 Фильтр по категории
+        // Фильтры (оставляем ваши)
+
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->category_id);
         }
 
-        // 🔸 Фильтр по цене
         if ($request->filled('min_price') || $request->filled('max_price')) {
             $query->whereHas('prices', function ($q) use ($request) {
                 $q->where('type', 'default');
@@ -32,7 +30,6 @@ class ProductController extends Controller
             });
         }
 
-        // 🔸 Фильтр по атрибутам через filter[Цвет]=Черный&filter[Вес]=5
         if ($request->has('filter')) {
             foreach ($request->get('filter') as $attrName => $value) {
                 $query->whereHas('attributes', function ($q) use ($attrName, $value) {
@@ -42,12 +39,10 @@ class ProductController extends Controller
             }
         }
 
-        // 🔸 Поиск по имени
         if ($request->filled('search')) {
             $query->where('name', 'like', '%' . $request->search . '%');
         }
 
-        // 🔸 Сортировка
         if ($request->filled('sort_by')) {
             if ($request->sort_by === 'price_asc') {
                 $query->with(['prices' => function ($q) {
@@ -60,7 +55,10 @@ class ProductController extends Controller
             }
         }
 
-        return $query->paginate(10);
+        // Количество на странице, по умолчанию 10
+        $perPage = $request->input('per_page', 10);
+
+        return $query->paginate($perPage);
     }
 
     public function show($id)

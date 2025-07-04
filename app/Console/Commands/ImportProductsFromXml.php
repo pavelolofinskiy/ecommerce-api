@@ -9,6 +9,7 @@ use App\Models\Category;
 use App\Models\Attribute;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use App\Models\ProductImage;
 
 class ImportProductsFromXml extends Command
 {
@@ -52,7 +53,14 @@ class ImportProductsFromXml extends Command
             $description = (string) $item->description;
             $price = (float) $item->price;
             $categoryId = (int) $item->categoryId;
-            $image = (string) $item->picture;
+            $url = (string) $item->url;
+
+            $slug = null;
+            if ($url) {
+                // Парсим URL и извлекаем basename без `.html`
+                $slug = basename(parse_url($url, PHP_URL_PATH), '.html');
+            }
+
 
             $product = Product::updateOrCreate(
                 ['external_id' => $externalId],
@@ -61,9 +69,23 @@ class ImportProductsFromXml extends Command
                     'description' => $description,
                     'price' => $price,
                     'category_id' => $categoryMap[$categoryId] ?? null,
-                    'image' => $image,
+                    'slug' => $slug,
                 ]
             );
+
+            $product->prices()->updateOrCreate(
+                ['type' => 'default'], // или другой идентификатор типа цены
+                ['amount' => $price]
+            );
+
+            $product->images()->delete();
+
+            // Добавляем новые изображения
+            foreach ($item->picture as $picture) {
+                $product->images()->create([
+                    'url' => (string) $picture
+                ]);
+            }
 
             // Импорт характеристик
             foreach ($item->param as $param) {

@@ -20,3 +20,7 @@ Route::get('/', function () {
 Route::apiResource('/products', AdminProductController::class)->except(['show']);
 
 Route::apiResource('/categories', AdminCategoryController::class)->except(['show']);
+
+Route::get('/products', function () {
+    return view('products');
+});
