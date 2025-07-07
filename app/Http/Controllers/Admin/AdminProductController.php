@@ -4,24 +4,26 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\Product; 
+use App\Models\Product;
 
 class AdminProductController extends Controller
 {
     public function store(Request $request)
-    {   
-        
+    {
         $validated = $request->validate([
             'name' => 'required|string',
             'description' => 'nullable|string',
             'category_id' => 'required|exists:categories,id',
             'price' => 'required|numeric|min:0',
+            'tags' => 'nullable|array|min:1|max:3',
+            'tags.*' => 'in:new,top,hit',
         ]);
 
         $product = Product::create([
             'name' => $validated['name'],
-            'description' => $validated['description'],
+            'description' => $validated['description'] ?? null,
             'category_id' => $validated['category_id'],
+            'tags' => $validated['tags'] ?? [],
         ]);
 
         $product->prices()->create([
@@ -36,16 +38,14 @@ class AdminProductController extends Controller
         }
 
         return response()->json($product, 201);
-        
     }
 
-     public function index(Request $request)
+    public function index(Request $request)
     {
         $query = Product::with('category');
 
         if ($request->filled('search')) {
-            $search = $request->input('search');
-            $query->where('name', 'like', "%{$search}%");
+            $query->where('name', 'like', '%' . $request->search . '%');
         }
 
         if ($request->filled('category_id')) {
@@ -72,16 +72,24 @@ class AdminProductController extends Controller
             'description' => 'nullable|string',
             'category_id' => 'sometimes|required|exists:categories,id',
             'price' => 'sometimes|required|numeric|min:0',
+            'tags' => 'nullable|array|min:1|max:3',
+            'tags.*' => 'in:new,top,hit',
         ]);
 
         if (isset($validated['name'])) {
             $product->name = $validated['name'];
         }
+
         if (array_key_exists('description', $validated)) {
             $product->description = $validated['description'];
         }
+
         if (isset($validated['category_id'])) {
             $product->category_id = $validated['category_id'];
+        }
+
+        if (isset($validated['tags'])) {
+            $product->tags = $validated['tags'];
         }
 
         if ($request->hasFile('image')) {
@@ -92,7 +100,6 @@ class AdminProductController extends Controller
         $product->save();
 
         if (isset($validated['price'])) {
-            // Обновить цену или создать новую запись, если нужно
             $product->prices()->updateOrCreate(
                 ['type' => 'default'],
                 ['amount' => $validated['price']]
@@ -102,4 +109,15 @@ class AdminProductController extends Controller
         return response()->json($product);
     }
 
+    public function bulkUpdateType(Request $request)
+    {
+        $request->validate([
+            'product_ids' => 'required|array',
+            'type' => 'required|string',
+        ]);
+
+        Product::whereIn('id', $request->product_ids)->update(['type' => $request->type]);
+
+        return response()->json(['message' => 'Тип товаров обновлен']);
+    }
 }

@@ -197,4 +197,73 @@ class CartController extends Controller
             'items' => $items,
         ]);
     }
+
+    public function replaceCartWithItem(Request $request)
+    {
+        $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'quantity' => 'required|integer|min:1',
+        ]);
+
+        $productId = $request->product_id;
+        $quantity = $request->quantity;
+
+        if ($request->user()) {
+            $user = $request->user();
+
+            // Получаем корзину или создаём новую
+            $cart = Cart::firstOrCreate(['user_id' => $user->id]);
+
+            // Удаляем все товары из корзины
+            $cart->items()->delete();
+
+            // Добавляем новый товар с нужным количеством
+            $cart->items()->create([
+                'product_id' => $productId,
+                'quantity' => $quantity,
+            ]);
+
+            // Загружаем обновленные товары для ответа
+            $items = $cart->load('items.product')->items->map(function ($item) {
+                return [
+                    'product' => $item->product,
+                    'quantity' => $item->quantity,
+                ];
+            });
+
+            $total = $items->sum(function ($item) {
+                return $item['product']->price * $item['quantity'];
+            });
+
+            return response()->json([
+                'message' => 'Корзина очищена и добавлен новый товар (авторизован)',
+                'items' => $items,
+                'total' => $total,
+            ]);
+        }
+
+        // Для гостя очищаем сессию и кладём туда один товар
+        session(['cart' => [
+            $productId => ['quantity' => $quantity],
+        ]]);
+
+        $products = Product::whereIn('id', [$productId])->get();
+
+        $items = $products->map(function ($product) use ($quantity) {
+            return [
+                'product' => $product,
+                'quantity' => $quantity,
+            ];
+        });
+
+        $total = $items->sum(function ($item) {
+            return $item['product']->price * $item['quantity'];
+        });
+
+        return response()->json([
+            'message' => 'Корзина очищена и добавлен новый товар (гость)',
+            'items' => $items,
+            'total' => $total,
+        ]);
+    }
 }

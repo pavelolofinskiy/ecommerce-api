@@ -36,6 +36,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/cart/add', [CartController::class, 'addItem']);
     Route::post('/cart/update', [CartController::class, 'updateItemQuantity']);
     Route::delete('/cart/remove/{id}', [CartController::class, 'removeItem']);
+    Route::post('/cart/replace-item', [CartController::class, 'replaceCartWithItem']);
     Route::post('/checkout', [OrderController::class, 'checkout']);
 });
 
@@ -75,6 +76,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::post('/products', [AdminProductController::class, 'store']);
     Route::put('/products/{product}', [AdminProductController::class, 'update']);
     Route::delete('/products/{product}', [AdminProductController::class, 'destroy']);
+    Route::post('/products/bulk-update-type', [AdminProductController::class, 'bulkUpdateType']);
 
     // Категории
     Route::get('/categories', [AdminCategoryController::class, 'index']);

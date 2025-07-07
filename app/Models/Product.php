@@ -15,6 +15,12 @@ class Product extends Model
         'category_id',
         'image',
         'slug',
+        'stock',
+        'tags',
+    ];
+
+    protected $casts = [
+        'tags' => 'array',
     ];
 
     public function category()

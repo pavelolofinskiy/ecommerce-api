@@ -17,6 +17,10 @@ class ProductController extends Controller
             $query->where('category_id', $request->category_id);
         }
 
+        if ($request->filled('type')) {
+            $query->where('type', $request->input('type'));
+        }
+
         // Фильтрация по цене
         if ($request->filled('min_price') || $request->filled('max_price')) {
             $query->whereHas('prices', function ($q) use ($request) {
