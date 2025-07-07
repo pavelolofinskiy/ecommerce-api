@@ -10,14 +10,14 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Product::with(['category', 'images', 'prices', 'attributes']);
+        $query = Product::query()->with(['category', 'images', 'prices', 'attributes']);
 
-        // Фильтры (оставляем ваши)
-
+        // Фильтрация по категории
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->category_id);
         }
 
+        // Фильтрация по цене
         if ($request->filled('min_price') || $request->filled('max_price')) {
             $query->whereHas('prices', function ($q) use ($request) {
                 $q->where('type', 'default');
@@ -30,6 +30,7 @@ class ProductController extends Controller
             });
         }
 
+        // Фильтрация по атрибутам
         if ($request->has('filter')) {
             foreach ($request->get('filter') as $attrName => $value) {
                 $query->whereHas('attributes', function ($q) use ($attrName, $value) {
@@ -39,26 +40,50 @@ class ProductController extends Controller
             }
         }
 
+        // Поиск
         if ($request->filled('search')) {
             $query->where('name', 'like', '%' . $request->search . '%');
         }
 
+        // Сортировка
         if ($request->filled('sort_by')) {
-            if ($request->sort_by === 'price_asc') {
-                $query->with(['prices' => function ($q) {
-                    $q->where('type', 'default');
-                }])->orderByPriceAsc();
-            } elseif ($request->sort_by === 'price_desc') {
-                $query->with(['prices' => function ($q) {
-                    $q->where('type', 'default');
-                }])->orderByPriceDesc();
+            switch ($request->sort_by) {
+                case 'price_asc':
+                    $query->join('prices', function ($join) {
+                        $join->on('products.id', '=', 'prices.product_id')
+                            ->where('prices.type', 'default');
+                    })->orderBy('prices.amount', 'asc');
+                    break;
+
+                case 'price_desc':
+                    $query->join('prices', function ($join) {
+                        $join->on('products.id', '=', 'prices.product_id')
+                            ->where('prices.type', 'default');
+                    })->orderBy('prices.amount', 'desc');
+                    break;
+
+                default:
+                    // Можно добавить сортировку по популярности или дате
+                    break;
             }
         }
 
-        // Количество на странице, по умолчанию 10
+        // Количество товаров на странице
         $perPage = $request->input('per_page', 10);
 
-        return $query->paginate($perPage);
+        // Получить пагинированный результат
+        $products = $query->paginate($perPage);
+
+        // Убрать дубликаты из-за join с ценами
+        $products->setCollection($products->getCollection()->unique('id'));
+
+        return response()->json([
+            'data' => $products->items(),
+            'total' => $products->total(),
+            'current_page' => $products->currentPage(),
+            'last_page' => $products->lastPage(),
+            'per_page' => $products->perPage(),
+        ]);
     }
 
     public function show($id)

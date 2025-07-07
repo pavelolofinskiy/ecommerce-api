@@ -15,13 +15,28 @@ class CartController extends Controller
     {
         if ($request->user()) {
             $cart = Cart::with('items.product')->where('user_id', $request->user()->id)->first();
-            return response()->json($cart ?: ['items' => []]);
+
+            $items = $cart ? $cart->items->map(function ($item) {
+                return [
+                    'product' => $item->product,
+                    'quantity' => $item->quantity,
+                ];
+            }) : collect();
+
+            $total = $items->sum(function ($item) {
+                return $item['product']->price * $item['quantity'];
+            });
+
+            return response()->json([
+                'items' => $items,
+                'total' => $total,
+            ]);
         }
 
         // Гость
         $sessionCart = session('cart', []);
         if (empty($sessionCart)) {
-            return response()->json(['items' => []]);
+            return response()->json(['items' => [], 'total' => 0]);
         }
 
         $products = Product::whereIn('id', array_keys($sessionCart))->get();
@@ -33,7 +48,14 @@ class CartController extends Controller
             ];
         });
 
-        return response()->json(['items' => $items]);
+        $total = $items->sum(function ($item) {
+            return $item['product']->price * $item['quantity'];
+        });
+
+        return response()->json([
+            'items' => $items,
+            'total' => $total,
+        ]);
     }
 
     // Добавить товар
@@ -117,5 +139,62 @@ class CartController extends Controller
         }
 
         return response()->json(['message' => 'Товар удалён (гость)']);
+    }
+
+    public function updateItemQuantity(Request $request)
+    {
+        $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'quantity' => 'required|integer|min:1',
+        ]);
+
+        $productId = $request->product_id;
+        $quantity = $request->quantity;
+
+        if ($request->user()) {
+            $cart = Cart::where('user_id', $request->user()->id)->first();
+
+            if (!$cart) {
+                return response()->json(['message' => 'Корзина не найдена'], 404);
+            }
+
+            $item = $cart->items()->where('product_id', $productId)->first();
+
+            if (!$item) {
+                return response()->json(['message' => 'Товар не найден в корзине'], 404);
+            }
+
+            $item->quantity = $quantity;
+            $item->save();
+
+            return response()->json([
+                'message' => 'Количество товара обновлено (авторизован)',
+                'items' => $cart->load('items.product')->items,
+            ]);
+        }
+
+        // Гость
+        $cart = session('cart', []);
+
+        if (!isset($cart[$productId])) {
+            return response()->json(['message' => 'Товар не найден в корзине'], 404);
+        }
+
+        $cart[$productId]['quantity'] = $quantity;
+        session(['cart' => $cart]);
+
+        $products = Product::whereIn('id', array_keys($cart))->get();
+
+        $items = $products->map(function ($product) use ($cart) {
+            return [
+                'product' => $product,
+                'quantity' => $cart[$product->id]['quantity'],
+            ];
+        });
+
+        return response()->json([
+            'message' => 'Количество товара обновлено (гость)',
+            'items' => $items,
+        ]);
     }
 }
