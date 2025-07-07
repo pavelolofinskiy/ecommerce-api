@@ -34,7 +34,6 @@ Route::prefix('v1')->group(function () {
     Route::get('/products/{id}', [ProductController::class, 'show']);
 });
 
-
 Route::get('/cart', [CartController::class, 'getCart']);
 Route::post('/cart/add', [CartController::class, 'addItem']);
 Route::delete('/cart/remove/{id}', [CartController::class, 'removeItem']);
@@ -61,6 +60,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders/{order}', [OrderController::class, 'show']);
 });
+
+
 
 use App\Http\Controllers\Admin\AdminOrderController;
 
