@@ -27,9 +27,12 @@ class CartController extends Controller
                 return $item['product']->price * $item['quantity'];
             });
 
+            $amount = $items->sum(fn($item) => $item['quantity']);
+
             return response()->json([
                 'items' => $items,
                 'total' => $total,
+                'amount' => $amount,
             ]);
         }
 
@@ -52,9 +55,15 @@ class CartController extends Controller
             return $item['product']->price * $item['quantity'];
         });
 
+
+         
+        $amount = $items->sum(fn($item) => $item['quantity']);
+
+
         return response()->json([
             'items' => $items,
             'total' => $total,
+            'amount' => $amount,
         ]);
     }
 

@@ -95,14 +95,14 @@
       <div class="form-group">
         <label>Теги</label>
         <div class="tags-checkboxes">
-          <label v-for="tag in allowedTags" :key="tag" class="tag-checkbox">
+          <label v-for="(label, tag) in allowedTags" :key="tag" class="tag-checkbox">
             <input
               type="checkbox"
               :value="tag"
               v-model="form.tags"
               :disabled="!form.tags.includes(tag) && form.tags.length >= 3"
             />
-            {{ tag }}
+            {{ label }}
           </label>
           <small class="tags-help">Можно выбрать от 1 до 3 тегов</small>
         </div>
@@ -140,7 +140,13 @@
             <td>{{ product.category?.name }}</td>
             <td>{{ product.type ?? '—' }}</td>
             <td>
-              <span v-for="tag in product.tags || []" :key="tag" class="tag-label">{{ tag }}</span>
+              <span
+                v-for="tag in product.tags || []"
+                :key="tag"
+                class="tag-label"
+              >
+                {{ allowedTags[tag] ?? tag }}
+              </span>
             </td>
             <td>
               <button @click="editProduct(product)" class="btn-link edit">Редактировать</button>
@@ -168,7 +174,11 @@ import api from '../api'
 const products = ref([])
 const categories = ref([])
 const types = ['new', 'checked', 'popular']
-const allowedTags = ['new', 'top', 'hit']
+const allowedTags = {
+  new: 'Новинка',
+  top: 'Топ',
+  hit: 'Хит'
+}
 const selectedProducts = ref([])
 const bulkType = ref('')
 
